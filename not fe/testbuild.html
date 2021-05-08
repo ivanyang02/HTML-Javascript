@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <style>
+        canvas {
+            border: 1px solid #d3d3d3;
+            background-color: #f1f1f1;
+        }
+    </style>
+</head>
+<body onload="startGame()">
+    <script>
+        //general game variables
+        var myGamePiece;
+        var lastdir;
+
+        //map variables
+        var map = [];
+        var passableGround = [];
+        var wallGround = [];
+        var villageTile = [];
+        var dungeonTile = [];
+        var mapwidth;
+        var mapheight;
+        var charLocation;
+        var mapx;
+        var mapy;
+
+        //landmark variables
+        var villageMap = [];
+        var dungeonMap = [];
+        var thislandmark;
+        var thislandmarknumber;
+        var thisdungeon;
+        var villageNumber = 0;
+        var dungeonNumber = 0;
+
+        //tile variables
+        var locationx;
+        var locationy;
+        var locationwidth;
+        var locationheight;
+        var allowed;
+
+        //minimap variables
+        var miniMap = [];
+        var open = true;
+
+        //collision variables
+        var upcol;
+        var downcol;
+        var leftcol;
+        var rightcol;
+        var leftdir;
+        var rightdir;
+        var updir;
+        var downdir;
+        var edge;
+
+        var menu;
+
+function startGame() {
+    myGamePiece = new component(16, 16, "red", 160, 160, "color");
+    myGameArea.start();
+    mapwidth = 100;
+    mapheight = 100;
+    mapx = -800;
+    mapy = -800;
+    locationx = 0;
+    locationy = 0;
+    edge = false;
+    allowed = true;
+    charLocation = "overworld";
+    generateMap();
+}
+
+function generateMap() {
+    for (i = 0; i < mapheight; i++) {                   //grass
+        map[i] = [];
+        for (j = 0; j < mapwidth; j++) {
+            map[i][j] = "grass" + (Math.floor(Math.random() * 2) + 1);
+        }
+    }
+
+    for (i = 0; i < 20; i++) {                           //village
+        createVillage();
+
+        locationx = Math.floor(Math.random() * 90);
+        locationy = Math.floor(Math.random() * 90);
+        for (j = 1; j < 4; j++) {
+            for (k = 1; k < 4; k++) {
+                if (!map[locationy + k - 1][locationx + j - 1].match(/grass/gi) && map[locationy + k - 1][locationx + j - 1] != "forest") {
+                    allowed = false;
+                }
+            }
+        }
+        if (allowed == true) {
+            for (j = 1; j < 4; j++) {
+                for (k = 1; k < 4; k++) {
+                    map[locationy + k - 1][locationx + j - 1] = "village" + k + j;
+                    if (map[locationy + k - 1][locationx + j - 1] == "village32") {
+                        map[locationy + k - 1][locationx + j - 1] = "villageentrance";
+                    }
+                }
+            }
+        }
+        allowed = true;
+    }
+
+    for (q = 0; q < 10; q++) {                           //mountain
+        locationx = Math.floor(Math.random() * 89);
+        locationy = Math.floor(Math.random() * 89);
+        for (j = 1; j < 6; j++) {
+            for (k = 0; k < 10; k++) {
+                if ((j == 1 && k >= 6 && k <= 7) || (j == 2 && k >= 3 && k <= 8) || (j == 3 && k >= 2 && k <= 8) || (j == 4 && k >= 1) || (j == 5 && k != 4 && k != 9)) {
+                    if (!map[locationy + j - 1][locationx + k].match(/grass/gi) && map[locationy + j - 1][locationx + k] != "forest") {
+                        allowed = false;
+                    }
+                }
+            }
+
+        }
+        if (allowed == true) {
+            map[locationy][locationx + 6] = "mountain16";
+            map[locationy][locationx + 7] = "mountain17";
+            for (i = 3; i < 9; i++) {
+                map[locationy + 1][locationx + i] = "mountain2" + i;
+            }
+            for (i = 2; i < 9; i++) {
+                map[locationy + 2][locationx + i] = "mountain3" + i;
+            }
+            for (i = 1; i < 10; i++) {
+                map[locationy + 3][locationx + i] = "mountain4" + i;
+            }
+            for (i = 0; i < 9; i++) {
+                if (i != 4) {
+                    map[locationy + 4][locationx + i] = "mountain5" + i;
+                }
+                if (i == 1 && Math.floor(Math.random() * 10 > 6)) {
+                    map[locationy + 4][locationx + i] = "cave";
+                    createDungeon();
+                }
+            }
+        }
+        else { q--;}
+        allowed = true;
+    }
+    drawOverworld();
+}
+
+function drawOverworld() {
+        for (i = 0; i < mapheight; i++) {               //drawing each tile
+            for (j = 0; j < mapwidth; j++) {
+                if(map[i][j].match(/grass/gi)){
+                    passableGround.push(new component(16, 16, map[i][j] + ".png", j * 16 + mapx, i * 16 + mapy, "image"));
+                }else
+                if (map[i][j] =="cave") {
+                    dungeonTile.push(new component(16, 16, map[i][j] + ".png", j * 16 + mapx, i * 16 + mapy, "image"));
+                } else
+                    if (map[i][j] == "villageentrance") {
+                        villageTile.push(new component(16, 16, "villageentrance.png", j * 16 + mapx, i * 16 + mapy, "image"));
+                }else{
+                    wallGround.push(new component(16, 16, map[i][j]+".png", j * 16 + mapx, i * 16 + mapy, "image"));
+                }
+            }
+        }
+}
+function drawLandmark() {
+    thislandmark = arguments[0];
+    thislandmarknumber = arguments[1];
+    if (thislandmark == "village") {
+        for (i = 0; i < 21; i++) {
+            for (j = 0; j < 21; j++) {
+                if (villageMap[thislandmarknumber][i][j].match(/wall/gi)) {
+                    wallGround.push(new component(16, 16, villageMap[thislandmarknumber][i][j] + ".png", j * 16, i * 16, "image"));
+                } else {
+                    passableGround.push(new component(16, 16, villageMap[thislandmarknumber][i][j] + ".png", j * 16, i * 16, "image"));
+                }
+            }
+        }
+    }
+    if (thislandmark == "dungeon") {
+        for (i = 0; i < 21; i++) {
+            for (j = 0; j < 21; j++) {
+                passableGround.push(new component(16, 16, dungeonMap[thislandmarknumber][i][j] + ".png", j * 16, i * 16, "image"));
+            }
+        }
+    }
+}
+
+function minimap() {
+    for (i = 0; i < mapheight; i++) {               //rendering each tile
+        for (j = 0; j < mapwidth; j++) {
+            if (map[i][j].match(/grass/gi)) {
+                miniMap.push(new component(2, 2, "grass1.png", (j+30) * 2, (i+30) * 2, "image"));
+            }
+            if (map[i][j].match(/village/gi)) {
+                miniMap.push(new component(2, 2, map[i][j] + ".png", (j + 30) * 2, (i + 30) * 2, "image"));
+            }
+            if (map[i][j].match(/mountain/)) {
+                miniMap.push(new component(2, 2, map[i][j] + ".png", (j + 30) * 2, (i + 30) * 2, "image"));
+            }
+        }
+    }
+}
+
+function createVillage() {
+    villageMap[villageNumber] = [];
+    for (j = 0; j < 21; j++) {
+        villageMap[villageNumber][j] = [];
+        for (k = 0; k < 21; k++) {
+            villageMap[villageNumber][j][k] = "grass1";
+            if (j == 0 ||(j == 18 && k != 10)) {
+                villageMap[villageNumber][j][k] = "northwall";
+            }
+            if ((k == 0 || k == 20) && j <=18) {
+                villageMap[villageNumber][j][k] = "sidewall";
+            }
+        }
+    }
+    villageMap[villageNumber][0][0] = "northwestcorner";
+    villageMap[villageNumber][0][20] = "northeastcorner";
+    villageMap[villageNumber][20][10] = "floor1";
+
+    villageMap[villageNumber][1][1] = "house11";
+    villageMap[villageNumber][1][2] = "house12";
+    villageMap[villageNumber][1][3] = "house13";
+    villageMap[villageNumber][2][1] = "house21";
+    villageMap[villageNumber][2][2] = "house22";
+    villageMap[villageNumber][2][3] = "house23";
+
+
+
+
+    villageNumber++;
+}
+function createDungeon() {
+    dungeonMap[dungeonNumber] = [];
+    for (j = 0; j < 21; j++) {
+        dungeonMap[dungeonNumber][j] = [];
+        for (k = 0; k < 21; k++) {
+            dungeonMap[dungeonNumber][j][k] = "floor1";
+        }
+    }
+    dungeonMap[dungeonNumber][20][10] = "grass1";
+    dungeonNumber++;
+}
+
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = 336;
+        this.canvas.height = 336;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        this.interval = setInterval(updateGameArea, 20);
+        window.addEventListener('keydown', function (e) {
+            myGameArea.key = e.keyCode;
+        })
+        window.addEventListener('keyup', function (e) {
+            myGameArea.key = false;
+        })
+        },
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+    stop : function() {
+        clearInterval(this.interval);
+    }
+}
+
+function everyinterval(n) {
+    if ((myGameArea.frameNo / n) % 1 == 0) { return true; }
+    return false;
+}
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    if (type == "image") {
+        this.image = new Image();
+        this.image.src = color;
+    }
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;
+    this.x = x;
+    this.y = y;
+    this.update = function() {
+        ctx = myGameArea.context;
+        if (type == "image") {
+            ctx.drawImage(this.image,
+                this.x,
+                this.y,
+                this.width, this.height);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+    this.newPos = function() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+   //     this.rendermap();
+    }
+ /*   this.rendermap = function () {
+        if (this.x < -16 || this.x > 320 || this.y < -16 || this.y > 320) {
+            this.image.src = "";
+        }
+    }*/
+}
+
+function updateGameArea() {
+    myGameArea.clear();
+
+    //stopping movement
+    for (i = 0; i < wallGround.length; i++) { if (wallGround[i].x % 16 == 0) { wallGround[i].speedX = 0; } }
+    for (i = 0; i < wallGround.length; i++) { if (wallGround[i].y % 16 == 0) { wallGround[i].speedY = 0; } }
+    for (i = 0; i < passableGround.length; i++) { if (passableGround[i].x % 16 == 0) { passableGround[i].speedX = 0; } }
+    for (i = 0; i < passableGround.length; i++) { if (passableGround[i].y % 16 == 0) { passableGround[i].speedY = 0; } }
+    for (i = 0; i < villageTile.length; i++) { if (villageTile[i].x % 16 == 0) { villageTile[i].speedX = 0; } }
+    for (i = 0; i < villageTile.length; i++) { if (villageTile[i].y % 16 == 0) { villageTile[i].speedY = 0; } }
+    for (i = 0; i < dungeonTile.length; i++) { if (dungeonTile[i].x % 16 == 0) { dungeonTile[i].speedX = 0; } }
+    for (i = 0; i < dungeonTile.length; i++) { if (dungeonTile[i].y % 16 == 0) { dungeonTile[i].speedY = 0; } }
+    if (myGamePiece.x % 16 == 0) { myGamePiece.speedX = 0; }
+    if (myGamePiece.y % 16 == 0) { myGamePiece.speedY = 0; }
+
+    //collision
+    for (i = 0; i < wallGround.length; i++) {
+        if (wallGround[i].x + 1 <= myGamePiece.x + myGamePiece.width && wallGround[i].x + wallGround[i].width + 1 >= myGamePiece.x && wallGround[i].y == myGamePiece.y) {
+            leftcol = false;
+            leftdir = false;
+        }
+        if (wallGround[i].x - 1 <= myGamePiece.x + myGamePiece.width && wallGround[i].x + wallGround[i].width - 1 >= myGamePiece.x && wallGround[i].y == myGamePiece.y) {
+            rightcol = false;
+            rightdir = false;
+        }
+        if (wallGround[i].y + 1 <= myGamePiece.y + myGamePiece.height && wallGround[i].y + wallGround[i].height + 1 >= myGamePiece.y && wallGround[i].x == myGamePiece.x) {
+            upcol = false;
+            updir = false;
+        }
+        if (wallGround[i].y - 1 <= myGamePiece.y + myGamePiece.height && wallGround[i].y + wallGround[i].height - 1 >= myGamePiece.y && wallGround[i].x == myGamePiece.x) {
+            downcol = false;
+            downdir = false;
+        }
+    }
+
+    if (charLocation == "overworld") {
+        //edge of map stuff
+        if (passableGround[0].x == 0) { leftcol = false; edge = true; }
+        if (passableGround[passableGround.length - 1].x == 320) { rightcol = false; edge = true; }
+        if (passableGround[0].y == 0) { upcol = false; edge = true; }
+        if (passableGround[passableGround.length - 1].y == 320) { downcol = false; edge = true; }
+
+        //movement
+        if (myGameArea.key && myGameArea.key == 37 && leftcol == true && passableGround[0].speedY == 0 && myGamePiece.x == 160) { for (i = 0; i < wallGround.length; i++) { wallGround[i].speedX = 2; } for (i = 0; i < passableGround.length; i++) { passableGround[i].speedX = 2; } for (i = 0; i < villageTile.length; i++) { villageTile[i].speedX = 2; } for (i = 0; i < dungeonTile.length; i++) { dungeonTile[i].speedX = 2; } edge = false; }
+        if (myGameArea.key && myGameArea.key == 39 && rightcol == true && passableGround[0].speedY == 0 && myGamePiece.x == 160) { for (i = 0; i < wallGround.length; i++) { wallGround[i].speedX = -2; } for (i = 0; i < passableGround.length; i++) { passableGround[i].speedX = -2; } for (i = 0; i < villageTile.length; i++) { villageTile[i].speedX = -2; } for (i = 0; i < dungeonTile.length; i++) { dungeonTile[i].speedX = -2; } edge = false; }
+        if (myGameArea.key && myGameArea.key == 38 && upcol == true && passableGround[0].speedX == 0 && myGamePiece.y == 160) { for (i = 0; i < wallGround.length; i++) { wallGround[i].speedY = 2; } for (i = 0; i < passableGround.length; i++) { passableGround[i].speedY = 2; } for (i = 0; i < villageTile.length; i++) { villageTile[i].speedY = 2; } for (i = 0; i < dungeonTile.length; i++) { dungeonTile[i].speedY = 2; } edge = false; }
+        if (myGameArea.key && myGameArea.key == 40 && downcol == true && passableGround[0].speedX == 0 && myGamePiece.y == 160) { for (i = 0; i < wallGround.length; i++) { wallGround[i].speedY = -2; } for (i = 0; i < passableGround.length; i++) { passableGround[i].speedY = -2; } for (i = 0; i < villageTile.length; i++) { villageTile[i].speedY = -2; } for (i = 0; i < dungeonTile.length; i++) { dungeonTile[i].speedY = -2; } edge = false; }
+
+        if (myGameArea.key && myGameArea.key == 37 && leftdir == true && edge == true && myGamePiece.speedY == 0 && myGamePiece.x > 0) { myGamePiece.speedX = -2; }
+        if (myGameArea.key && myGameArea.key == 39 && rightdir == true && edge == true && myGamePiece.speedY == 0 && myGamePiece.x < 320) { myGamePiece.speedX = 2; }
+        if (myGameArea.key && myGameArea.key == 38 && updir == true && edge == true && myGamePiece.speedX == 0 && myGamePiece.y > 0) { myGamePiece.speedY = -2; }
+        if (myGameArea.key && myGameArea.key == 40 && downdir == true && edge == true && myGamePiece.speedX == 0 && myGamePiece.y < 320) { myGamePiece.speedY = 2; }
+
+        upcol = true;
+        downcol = true;
+        leftcol = true;
+        rightcol = true;
+        updir = true;
+        downdir = true;
+        leftdir = true;
+        rightdir = true;
+        edge = false;
+
+        //minimap
+        if (myGameArea.key && myGameArea.key == 13 && open == true) { minimap(); open = false; } else
+            if (myGameArea.key && myGameArea.key == 32 && open == false) { miniMap = []; open = true; }
+
+        for (i = 0; i < villageTile.length; i++) {                  //transition to village
+            if (villageTile[i].x == myGamePiece.x && villageTile[i].y == myGamePiece.y) {
+                charLocation = "village";
+                myGamePiece.y = 304;
+                passableGround = [];
+                wallGround = [];
+                villageTile = [];
+                dungeonTile = [];
+                document.getElementById("currentlocation").innerHTML = "Village number " + i;
+                drawLandmark("village", i);
+            }
+        }
+        for (i = 0; i < dungeonTile.length; i++) {                  //transition to mountain
+            if (dungeonTile[i].x == myGamePiece.x && dungeonTile[i].y == myGamePiece.y) {
+                charLocation = "dungeon";
+                passableGround = [];
+                wallGround = [];
+                villageTile = [];
+                dungeonTile = [];
+                document.getElementById("currentlocation").innerHTML = "Dungeon number " + i;
+                drawLandmark("dungeon", i);
+            }
+        }
+
+    }
+
+    if (charLocation == "village" || charLocation == "dungeon") {
+        if (myGameArea.key && myGameArea.key == 37 && leftcol == true && myGamePiece.speedY == 0 && myGamePiece.x > 0) { myGamePiece.speedX = -2; }
+        if (myGameArea.key && myGameArea.key == 39 && rightcol == true && myGamePiece.speedY == 0 && myGamePiece.x < 320) { myGamePiece.speedX = 2; }
+        if (myGameArea.key && myGameArea.key == 38 && upcol == true && myGamePiece.speedX == 0 && myGamePiece.y > 0) { myGamePiece.speedY = -2; }
+        if (myGameArea.key && myGameArea.key == 40 && downcol == true && myGamePiece.speedX == 0 && myGamePiece.y < 320) { myGamePiece.speedY = 2; }
+
+        upcol = true;
+        downcol = true;
+        leftcol = true;
+        rightcol = true;
+
+        if (charLocation == "village" && myGamePiece.y == 320) {
+            myGamePiece.x = 160;
+            myGamePiece.y = 160;
+            passableGround = [];
+            wallGround = [];
+            document.getElementById("currentlocation").innerHTML = "Overworld";
+            charLocation = "overworld";
+            drawOverworld();
+        }
+    }
+    for (i = 0; i < wallGround.length; i += 1) {
+        wallGround[i].newPos();
+        wallGround[i].update();
+    }
+    for (i = 0; i < passableGround.length; i += 1) {
+        passableGround[i].newPos();
+        passableGround[i].update();
+    }
+    for (i = 0; i < villageTile.length; i += 1) {
+        villageTile[i].newPos();
+        villageTile[i].update();
+    }
+    for (i = 0; i < dungeonTile.length; i += 1) {
+        dungeonTile[i].newPos();
+        dungeonTile[i].update();
+    }
+
+    myGamePiece.newPos();
+    myGamePiece.update();
+
+    for (i = 0; i < miniMap.length; i += 1) {
+        miniMap[i].update();
+    }
+    if (map[0][0].match(/grass/gi) && passableGround.length > 0 && charLocation == "overworld") {
+        mapx = passableGround[0].x;
+        mapy = passableGround[0].y - 16;
+    }
+}
+
+
+
+    </script>
+    <p>Location:</p>
+    <p id="currentlocation">Overworld</p>
+    <p>enter to open minimap, space to close minimap</p>
+</body>
+</html>
