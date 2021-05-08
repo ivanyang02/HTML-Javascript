@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+canvas {
+    border:1px solid #d3d3d3;
+    background-color: #85C1E9;
+}
+
+    #spriteContainer {
+	position: absolute;
+	top:228px;
+	left:257px;
+      width: 34px;
+      height: 51px;
+      display: block;
+	 background-image: url("campfiresprites.png");
+	  animation: sprite .5s steps(8) infinite;
+    }
+
+	@keyframes sprite {
+ 100% {
+   background-position: -272px;
+ }
+}
+
+</style>
+</head>
+<body onload="startGame()">
+<script>
+
+var myGamePiece;
+var myBackground;
+var lastkey;
+var directionkey;
+var animationdelay;
+var movetype;
+
+function startGame() {
+    myGamePiece = new component(32, 44, "marioidleright.png", 10, 120, "image");
+    myBackground = new component(479, 270, "pixelbackground.png", 10, 10, "image");
+    lastkey = '0';
+    animationdelay = '0';
+    movetype = '0';
+    directionkey = '0';
+    myGameArea.start();
+}
+
+var myGameArea = {
+    canvas : document.createElement("canvas"),
+    start : function() {
+        this.canvas.width = 480;
+        this.canvas.height = 270;
+        this.context = this.canvas.getContext("2d");
+        document.body.insertBefore(this.canvas, document.body.childNodes[0]);
+        this.frameNo = 0;
+        this.interval = setInterval(updateGameArea, 20);
+		window.addEventListener('keydown', function (e) {
+            myGameArea.keys = (myGameArea.keys || []);
+            myGameArea.keys[e.keyCode] = true;
+			lastkey = 0;
+			})
+
+		window.addEventListener('keyup', function (e) {
+		    myGameArea.keys[e.keyCode] = false;
+        })
+		
+		window.addEventListener('keyup', function (q) {
+
+
+			if (q.keyCode == '37') {
+				lastkey = 37;
+				}
+			
+
+			else if (q.keyCode == '39') {
+				lastkey = 39;
+				}
+		})
+    }, 
+
+    clear : function() {
+        this.context.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    },
+    stop : function() {
+        clearInterval(this.interval);
+    }    
+}
+
+function component(width, height, color, x, y, type) {
+    this.type = type;
+    if (type == "image") {
+        this.image = new Image();
+        this.image.src = color;
+    }
+    this.width = width;
+    this.height = height;
+    this.speedX = 0;
+    this.speedY = 0;    
+    this.x = x;
+    this.y = y;   
+	this.gravity = 0.2;
+    this.gravitySpeed = 0;
+    this.update = function() {
+        ctx = myGameArea.context;
+        if (type == "image") {
+            ctx.drawImage(this.image, 
+                this.x, 
+                this.y,
+                this.width, this.height);
+        } else {
+            ctx.fillStyle = color;
+            ctx.fillRect(this.x, this.y, this.width, this.height);
+        }
+    }
+
+
+
+
+
+    this.newPos = function() {
+	    this.gravitySpeed += this.gravity;
+        this.x += this.speedX;
+        this.y += this.speedY + this.gravitySpeed;        
+		this.hitCeiling();
+        this.hitBottom(); 
+		this.hitLeftWall();
+		this.hitRightWall();
+		this.movement();
+		this.intervaldelay();
+		this.animation();
+
+		}   
+
+		this.movement = function() {
+		var campfirelight = myGameArea.canvas.width - 200;
+		var campfirenotlight = myGameArea.canvas.width - 250;
+		var campfireheight = myGameArea.canvas.height - 80;
+			if(this.x > campfirenotlight & this.speedX > 0 & this.x < campfirelight & this.y > campfireheight + 10 & this.speedY < 1){
+			    movetype = 2;
+				}else{
+					if (this.speedX > 0 & this.y > campfireheight + 10){
+					    movetype = 1;
+					}else{
+						if (this.speedX < 0 & this.x > campfirenotlight & this.x < campfirelight & this.y > campfireheight + 10 & this.speedY < 1){
+						    movetype = 3;
+						}else{
+							if (this.speedX < 0 & this.y > campfireheight + 10){
+							    movetype = 4;
+							}
+						}
+					}
+				}
+		}
+
+		this.animation = function () {
+		    if (movetype == 1 & animationdelay < 19) {
+		        myGamePiece.image.src = "mariowalkingright.png";
+		    } else if (movetype == 1 & animationdelay > 18) {
+		        myGamePiece.image.src = "marioidleright.png";
+		    }
+		    if (movetype == 2 & animationdelay < 19) {
+		        myGamePiece.image.src = "mariowalkingrightfirelit.png";
+		    } else if (movetype == 2 & animationdelay > 18) {
+		        myGamePiece.image.src = "marioidlerightfirelit.png";
+		    }
+		    if (movetype == 3 & animationdelay < 19) {
+		        myGamePiece.image.src = "mariowalkingleftfirelit.png";
+		    } else if (movetype == 3 & animationdelay > 18) {
+		        myGamePiece.image.src = "marioidleleftfirelit.png";
+		    }
+		    if (movetype == 4 & animationdelay < 19) {
+		        myGamePiece.image.src = "mariowalkingleft.png";
+		    } else if (movetype == 4 & animationdelay > 18) {
+		        myGamePiece.image.src = "marioidleleft.png";
+		    }
+		    if (movetype == 5) {
+		        myGamePiece.image.src = "marioidleleftfirelit.png";
+		    }
+		    if (movetype == 6) {
+		        myGamePiece.image.src = "marioidlerightfirelit.png";
+		    }
+		    if (movetype == 7) {
+		        myGamePiece.image.src = "marioidleleft.png";
+		        animationdelay = '0';
+		    }
+		    if (movetype == 8) {
+		        myGamePiece.image.src = "marioidleright.png";
+		        animationdelay = '0';
+		    }
+		    if (movetype == 9) {
+		        myGamePiece.image.src = "mariojumpright.png";
+		    }
+		    if (movetype == 10) {
+		        myGamePiece.image.src = "mariojumpleft.png";
+		    }
+
+		}
+
+		this.intervaldelay = function () {
+		    if (animationdelay < 38) {
+		        animationdelay++;
+		    } else{
+		        if (animationdelay == 38) {
+		            animationdelay ='0';
+		        }
+		    }
+		}
+
+		this.hitRightWall = function () {
+		    var rockright = myGameArea.canvas.width - this.width - 1;
+		    if (this.x > rockright) {
+		        this.x = rockright;
+		    }
+		}
+
+		this.hitLeftWall = function() {
+        var rockleft = 0;
+        if (this.x < rockleft) {
+            this.x = rockleft;
+		   }
+		}
+
+		this.hitCeiling = function() {
+        var rocktop = -30 + this.height;
+        if (this.y < rocktop) {
+            this.y = rocktop;
+			}
+		}
+
+	    this.hitBottom = function() {
+        var rockbottom = myGameArea.canvas.height - this.height;
+        if (this.y > rockbottom) {
+            this.y = rockbottom;
+		    this.gravitySpeed = 0;
+			}
+		}
+
+    this.crashWith = function(otherobj) {
+        var myleft = this.x;
+        var myright = this.x + (this.width);
+        var mytop = this.y;
+        var mybottom = this.y + (this.height);
+        var otherleft = otherobj.x;
+        var otherright = otherobj.x + (otherobj.width);
+        var othertop = otherobj.y;
+        var otherbottom = otherobj.y + (otherobj.height);
+        var crash = true;
+        if ((mybottom < othertop) || (mytop > otherbottom) || (myright < otherleft) || (myleft > otherright)) {
+            crash = false;
+        }
+        return crash;
+    }
+}
+
+function updateGameArea() {
+    myGameArea.clear();
+	myBackground.newPos();
+	myBackground.update();
+    myGamePiece.newPos();
+    myGamePiece.update();
+	myGamePiece.speedX = 0;
+    myGamePiece.speedY = 0; 
+    if (myGameArea.keys && myGameArea.keys[37]) {
+        myGamePiece.speedX = -2; directionkey = 1;
+    }
+    if (myGameArea.keys && myGameArea.keys[39]) {
+        myGamePiece.speedX = 2; directionkey = 0;
+    }
+    if (myGameArea.keys && myGameArea.keys[38]) {
+        myGamePiece.speedY = -6; lastkey = 1;
+    }
+
+	if (lastkey == '37'){
+	    movetype = 7;
+	}
+	if (lastkey == '37' & myGamePiece.x > 230 & myGamePiece.x < 280 & myGamePiece.y > 190){
+	    movetype = 5;
+	}
+
+	if (lastkey == '39'){
+	    movetype = 8;
+	}
+	if (lastkey == '39' & myGamePiece.x > 230 & myGamePiece.x < 280 & myGamePiece.y > 190){
+	    movetype = 6;
+	}
+	if (lastkey == '1' & myGamePiece.speedX > 0){
+	    movetype = 9;
+	}
+	if (lastkey == '1' & myGamePiece.speedX < 0){
+	    movetype = 10;
+	}
+
+	if (lastkey == '1' & directionkey == 0 & myGamePiece.y < 200) {
+	    movetype = 9;
+
+	}
+	if (directionkey == 1 && lastkey == '1') {
+	    movetype = 10;
+	}
+
+
+}
+
+function everyinterval(n) {
+    if ((myGameArea.frameNo / n) % 1 == 0) {return true;}
+    return false;
+}
+
+</script>
+
+
+
+  <div id=spriteContainer></div>
+</body>
+</html>
